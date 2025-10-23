@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Chris's Horror Recs — Mobile App</title>
+  <style>
+    :root{
+      --bg:#0b0b0f;--card:#14141a;--text:#f5f7ff;--muted:#a5a8b6;--accent:#ff3355;--accent2:#7c5cff;--border:#262636
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:radial-gradient(1200px 600px at 20% -10%,rgba(124,92,255,.18),transparent),
+      radial-gradient(1200px 700px at 120% 0,rgba(255,51,85,.12),transparent),var(--bg);
+      color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    }
+    .app{min-height:100%;display:flex;flex-direction:column}
+    header{
+      position:sticky;top:0;z-index:10;background:rgba(11,11,15,.7);backdrop-filter:saturate(120%) blur(8px);
+      border-bottom:1px solid var(--border);padding:12px 16px;
+    }
+    header h1{font-size:18px;margin:0}
+    header p{margin:4px 0 0;color:var(--muted);font-size:13px}
+
+    .screen{flex:1;display:flex;flex-direction:column;gap:14px;padding:16px;max-width:760px;margin:0 auto;width:100%}
+
+    .group{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+      border:1px solid var(--border);border-radius:16px;padding:14px}
+    .label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+    .options{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:520px){.options{grid-template-columns:repeat(2,1fr)}}
+    @media(min-width:760px){.options{grid-template-columns:repeat(3,1fr)}}
+
+    .btn{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      width:100%;min-height:48px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);
+      background:var(--card);color:var(--text);font-weight:600;font-size:15px;cursor:pointer;
+      transition:transform .05s ease,border .15s ease,background .15s ease
+    }
+    .btn:active{transform:scale(.99)}
+    .btn[data-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 2px rgba(255,51,85,.15) inset}
+
+    .controls{display:flex;gap:10px}
+    .pill{border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);
+      padding:10px 14px;min-height:44px;font-weight:700;font-size:14px;cursor:pointer}
+    .pill.primary{border-color:var(--accent);}
+    .pill:active{transform:translateY(1px)}
+
+    .result{display:none;flex-direction:column;gap:10px}
+    .result.show{display:flex}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+      border:1px solid var(--border);border-radius:16px;padding:16px}
+    .title{font-size:18px;margin:0 0 6px;color:var(--accent)}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+    .chip{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
+
+    .stepper{display:flex;gap:6px;align-items:center;margin:6px 0 0}
+    .dot{width:8px;height:8px;border-radius:50%;background:#2b2b3a}
+    .dot.active{background:var(--accent)}
+
+    .fade-enter{opacity:0;transform:translateY(6px)}
+    .fade-enter.fade-enter-active{opacity:1;transform:none;transition:opacity .18s ease,transform .18s ease}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Chris's Horror Recs</h1>
+      <p>Tap through: Subgenre → Era → Tone → Film</p>
+      <div class="stepper" aria-hidden="true">
+        <div class="dot" id="d1"></div>
+        <div class="dot" id="d2"></div>
+        <div class="dot" id="d3"></div>
+        <div class="dot" id="d4"></div>
+      </div>
+    </header>
+
+    <main class="screen" id="screen">
+      <!-- dynamic content injected here -->
+    </main>
+  </div>
+
+  <script>
+  // DATA (same structure as before)
+  const RECS = {
+    "Body Horror": {
+      Classic: {
+        Scary:{t:"The Brood (1979)",d:"Cronenberg's early masterpiece of psychosis made flesh—quietly terrifying."},
+        Fun:{t:"Society (1989)",d:"Class satire melts into madness; the shunting scene alone is worth it."},
+        "Critically Acclaimed":{t:"Videodrome (1983)",d:"Media paranoia, flesh technology, and Cronenberg's magnum opus."}
+      },
+      Modern: {
+        Scary:{t:"Raw (2016)",d:"Coming-of-age cannibalism with empathy and intensity."},
+        Fun:{t:"Swallow (2019)",d:"Body control and compulsion in a pastel nightmare."},
+        "Critically Acclaimed":{t:"Possessor (2020)",d:"Identity invasion told through brutal artistry—Cronenberg legacy continued."}
+      }
+    },
+    "Comedy Horror": {
+      Classic: {
+        Scary:{t:"House (1977)",d:"Japanese fever dream of limbs, piano, and pure chaos."},
+        Fun:{t:"The Return of the Living Dead (1985)",d:"Punk zombies, gallows humor, and 80s energy unmatched."},
+        "Critically Acclaimed":{t:"An American Werewolf in London (1981)",d:"Perfectly balances laughs and legitimate dread."}
+      },
+      Modern: {
+        Scary:{t:"Deadstream (2022)",d:"Influencer horror done right: frantic, inventive, hilarious."},
+        Fun:{t:"Tucker and Dale vs Evil (2010)",d:"Backwoods gore meets good-hearted goofiness."},
+        "Critically Acclaimed":{t:"What We Do in the Shadows (2014)",d:"Mockumentary gold; endearingly undead and razor sharp."}
+      }
+    },
+    "Supernatural / Occult Horror": {
+      Classic: {
+        Scary:{t:"The Changeling (1980)",d:"Elegant, melancholic haunting with one of horror's best seances."},
+        Fun:{t:"The Gate (1987)",d:"Kids open a gateway to stop-motion demons. Pure 80s charm."},
+        "Critically Acclaimed":{t:"The Innocents (1961)",d:"Subtle, gothic perfection in black-and-white terror."}
+      },
+      Modern: {
+        Scary:{t:"Talk to Me (2022)",d:"Possession updated for the viral age—raw, tragic, terrifying."},
+        Fun:{t:"Extra Ordinary (2019)",d:"Sweet, Irish ghost comedy that sneaks up with real heart."},
+        "Critically Acclaimed":{t:"The Witch (2015)",d:"Puritan dread rendered with art-film precision."}
+      }
+    },
+    "Psychological Horror": {
+      Classic: {
+        Scary:{t:"Repulsion (1965)",d:"Polanski’s portrait of isolation and madness still cuts deep."},
+        Fun:{t:"The Tenant (1976)",d:"Identity unraveling in a Kafkaesque apartment block."},
+        "Critically Acclaimed":{t:"Don’t Look Now (1973)",d:"Tragic grief and creeping horror woven into visual poetry."}
+      },
+      Modern: {
+        Scary:{t:"The Night House (2020)",d:"Grief meets metaphysics in this tightly wound descent."},
+        Fun:{t:"The Voices (2014)",d:"A pink-saturated, psychotic romp both hilarious and heartbreaking."},
+        "Critically Acclaimed":{t:"Climax (2018)",d:"Gaspar Noé’s dance of chaos—stylish, shocking, unforgettable."}
+      }
+    },
+    "Monster / Creature Features": {
+      Classic: {
+        Scary:{t:"The Thing (1982)",d:"Ultimate paranoia in Antarctic isolation—Carpenter’s masterpiece."},
+        Fun:{t:"The Blob (1988)",d:"Remake that outdoes the original with wit and wild effects."},
+        "Critically Acclaimed":{t:"The Birds (1963)",d:"Hitchcock terrorizes with nature itself; iconic suspense."}
+      },
+      Modern: {
+        Scary:{t:"The Descent (2005)",d:"Claustrophobia and creature horror collide in primal terror."},
+        Fun:{t:"Troll Hunter (2010)",d:"Found footage meets folklore in Norwegian grandeur."},
+        "Critically Acclaimed":{t:"Godzilla Minus One (2023)",d:"Human drama and spectacle; a kaiju film with soul."}
+      }
+    },
+    "Apocalyptic / Sci-Fi Horror": {
+      Classic: {
+        Scary:{t:"Invasion of the Body Snatchers (1978)",d:"Cold War paranoia perfected in pod form."},
+        Fun:{t:"Lifeforce (1985)",d:"Space vampires invade London—bizarre and glorious."},
+        "Critically Acclaimed":{t:"Videodrome (1983)",d:"Media infection and evolution; long live the new flesh."}
+      },
+      Modern: {
+        Scary:{t:"28 Days Later (2002)",d:"Gritty, fast, and despairingly human infection tale."},
+        Fun:{t:"Overlord (2018)",d:"WWII monsters and pulp energy meet modern craft."},
+        "Critically Acclaimed":{t:"Annihilation (2018)",d:"Existential cosmic horror through dreamlike science."}
+      }
+    },
+    "Slasher / Home Invasion": {
+      Classic: {
+        Scary:{t:"Black Christmas (1974)",d:"Proto-slasher that still feels dangerous and real."},
+        Fun:{t:"Sleepaway Camp (1983)",d:"Campy kills, unforgettable ending."},
+        "Critically Acclaimed":{t:"Peeping Tom (1960)",d:"Psychological slasher decades ahead of its time."}
+      },
+      Modern: {
+        Scary:{t:"You're Next (2011)",d:"Home invasion becomes feral survival—smart, fast, bloody."},
+        Fun:{t:"Freaky (2020)",d:"Body-swap slasher that’s self-aware and stylish."},
+        "Critically Acclaimed":{t:"Barbarian (2022)",d:"Bold structure and shocks elevate this modern nightmare."}
+      }
+    },
+    "Experimental / Arthouse Horror": {
+      Classic: {
+        Scary:{t:"Possession (1981)",d:"Marriage meltdown becomes Lovecraftian terror—wholly singular."},
+        Fun:{t:"Hausu (1977)",d:"Visual insanity, unmatched creativity, and pure joy in madness."},
+        "Critically Acclaimed":{t:"The Wicker Man (1973)",d:"Folk ritual, music, and sacrifice merge into timeless horror."}
+      },
+      Modern: {
+        Scary:{t:"Under the Skin (2013)",d:"Alien perspective, human dread; an atmospheric slow-burn marvel."},
+        Fun:{t:"Mandy (2018)",d:"Chainsaws, grief, and neon-metal vengeance—Cage unleashed."},
+        "Critically Acclaimed":{t:"The Love Witch (2016)",d:"Sumptuous retro styling with feminist bite and eerie calm."}
+      }
+    }
+  };
+
+  const screen = document.getElementById('screen');
+  const dots = [document.getElementById('d1'),document.getElementById('d2'),document.getElementById('d3'),document.getElementById('d4')];
+
+  let state = { step:1, sub:null, era:null, tone:null };
+
+  const setDots = () => {
+    dots.forEach((d,i)=> d.classList.toggle('active', i < state.step));
+  };
+
+  const btn = (label, onClick, selected=false) => {
+    const b = document.createElement('button');
+    b.className='btn'; b.textContent=label; b.setAttribute('data-selected', String(selected));
+    b.addEventListener('click', onClick, {passive:true});
+    return b;
+  };
+
+  const renderSubgenres = () => {
+    state.step=1; setDots(); screen.innerHTML='';
+    const g = document.createElement('section'); g.className='group fade-enter fade-enter-active';
+    const lab = document.createElement('div'); lab.className='label'; lab.textContent='1. Choose a Subgenre'; g.appendChild(lab);
+    const wrap = document.createElement('div'); wrap.className='options';
+    Object.keys(RECS).forEach(k=> wrap.appendChild(btn(k,()=>{ state.sub=k; renderEra(); })));
+    g.appendChild(wrap); screen.appendChild(g);
+  };
+
+  const renderEra = () => {
+    state.step=2; setDots(); screen.innerHTML='';
+    const g = document.createElement('section'); g.className='group fade-enter fade-enter-active';
+    const lab = document.createElement('div'); lab.className='label'; lab.textContent='2. Pick an Era'; g.appendChild(lab);
+    const wrap = document.createElement('div'); wrap.className='options';
+    wrap.appendChild(btn('Classic (pre‑2000)',()=>{ state.era='Classic'; renderTone(); }));
+    wrap.appendChild(btn('Modern (2000+)',()=>{ state.era='Modern'; renderTone(); }));
+    g.appendChild(wrap);
+
+    const controls=document.createElement('div'); controls.className='controls';
+    const back=document.createElement('button'); back.className='pill'; back.textContent='‹ Back'; back.onclick=renderSubgenres;
+    controls.appendChild(back); g.appendChild(controls);
+
+    screen.appendChild(g);
+  };
+
+  const renderTone = () => {
+    state.step=3; setDots(); screen.innerHTML='';
+    const g = document.createElement('section'); g.className='group fade-enter fade-enter-active';
+    const lab = document.createElement('div'); lab.className='label'; lab.textContent='3. Choose a Tone'; g.appendChild(lab);
+    const wrap = document.createElement('div'); wrap.className='options';
+    ['Scary','Fun','Critically Acclaimed'].forEach(t=> wrap.appendChild(btn(t,()=>{ state.tone=t; renderResult(); })));
+    g.appendChild(wrap);
+
+    const controls=document.createElement('div'); controls.className='controls';
+    const back=document.createElement('button'); back.className='pill'; back.textContent='‹ Back'; back.onclick=renderEra;
+    controls.appendChild(back); g.appendChild(controls);
+
+    screen.appendChild(g);
+  };
+
+  const renderResult = () => {
+    state.step=4; setDots(); screen.innerHTML='';
+    const rec = RECS?.[state.sub]?.[state.era]?.[state.tone];
+    const box = document.createElement('section'); box.className='group fade-enter fade-enter-active';
+
+    const head = document.createElement('div'); head.className='label'; head.textContent='Your Pick'; box.appendChild(head);
+    const card=document.createElement('div'); card.className='card';
+    const title=document.createElement('h2'); title.className='title'; title.textContent=rec ? rec.t : 'No match';
+    const desc=document.createElement('p'); desc.textContent=rec ? rec.d : 'Try another combination.';
+    const meta=document.createElement('div'); meta.className='meta';
+    const c1=document.createElement('span'); c1.className='chip'; c1.textContent=state.sub;
+    const c2=document.createElement('span'); c2.className='chip'; c2.textContent=state.era;
+    const c3=document.createElement('span'); c3.className='chip'; c3.textContent=state.tone;
+    [c1,c2,c3].forEach(c=>meta.appendChild(c));
+
+    card.appendChild(title); card.appendChild(desc); card.appendChild(meta); box.appendChild(card);
+
+    const controls=document.createElement('div'); controls.className='controls';
+    const again=document.createElement('button'); again.className='pill primary'; again.textContent='Pick Another';
+    again.onclick=()=>{ state={step:1,sub:null,era:null,tone:null}; renderSubgenres(); };
+    const back=document.createElement('button'); back.className='pill'; back.textContent='‹ Back'; back.onclick=renderTone;
+    controls.appendChild(again); controls.appendChild(back);
+
+    box.appendChild(controls); screen.appendChild(box);
+  };
+
+  // init
+  renderSubgenres(); setDots();
+  </script>
+</body>
+</html>
